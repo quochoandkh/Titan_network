@@ -13,14 +13,19 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+
 # Prompt the user to enter the identity code
 echo -e "${YELLOW}Please enter your identity code:${NC}"
 read -p "> " id
+# Cho phép người dùng nhập số lượng container muốn tạo
+read -p "Nhập số lượng node bạn muốn tạo (một IP giới hạn tối đa 5 node): " container_count
+# Nhập dung lượng lưu trữ cho mỗi node
+read -p "Nhập dung lượng lưu trữ cho mỗi node (GB), giới hạn tối đa 2TB/node (2000gb): " storage_gb
+# Nhập đường dẫn lưu trữ (tùy chọn)
+read -p "Nhập đường dẫn lưu trữ dữ liệu cho node trên máy chủ, ví dụ /root/mnt_d/): " custom_storage_path
 
 # Storage and port settings
-storage_gb=50
 start_port=1235
-container_count=5
 
 # Get the list of public IPs
 public_ips=$(curl -s ifconfig.me)
@@ -126,7 +131,7 @@ for ip in $public_ips; do
     echo -e "${GREEN}Setting up node for IP $ip${NC}"
 
     for ((i=1; i<=container_count; i++)); do
-        storage_path="/root/titan_storage_${ip}_${i}"
+        storage_path="${custom_storage_path}/titan_storage_${ip}_${i}"
 
         # Ensure storage path exists
         sudo mkdir -p "$storage_path"
