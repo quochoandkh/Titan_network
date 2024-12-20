@@ -4,6 +4,15 @@ wget -O duokai.sh https://raw.githubusercontent.com/a3165458/Titan-Network/main/
 
 wget -O duokaixianzhiban.sh https://raw.githubusercontent.com/a3165458/Titan-Network/main/duokaixianzhiban.sh && chmod +x duokaixianzhiban.sh && ./duokaixianzhiban.sh
 
-sudo chmod +x duokai_vi.sh
+Chi tiết cài:
 
+Cần mount ổ đĩa lưu trữ trước khi cài đặt 
+đối với wsl2: (ví dụ mount ổ D)
+mkdir -p ~/mnt_d
+sudo mount --bind /mnt/d ~/mnt_d
+
+git clone https://github.com/quochoandkh/Titan_network.git
+cd Titan_network
+sudo chmod +x duokai_vi.sh
 sudo bash duokai_vi.sh
+(chọn đường dẫn ) là ~/mnt_d/Titan_node

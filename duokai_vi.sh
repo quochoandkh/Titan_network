@@ -19,7 +19,7 @@ read -p "Nhập số lượng node bạn muốn tạo (một IP giới hạn t�
 read -p "Nhập cổng RPC bắt đầu (các cổng sẽ tự động tăng dần, đề nghị sử dụng 30000): " start_rpc_port
 
 # Nhập dung lượng lưu trữ cho mỗi node
-read -p "Nhập dung lượng lưu trữ cho mỗi node (GB), giới hạn tối đa 2TB/node: " storage_gb
+read -p "Nhập dung lượng lưu trữ cho mỗi node (GB), giới hạn tối đa 2TB/node (2000gb): " storage_gb
 
 # Nhập đường dẫn lưu trữ (tùy chọn)
 read -p "Nhập đường dẫn lưu trữ dữ liệu cho node trên máy chủ (bỏ qua để sử dụng đường dẫn mặc định titan_storage_$i): " custom_storage_path
