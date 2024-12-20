@@ -4,4 +4,5 @@ wget -O duokai.sh https://raw.githubusercontent.com/a3165458/Titan-Network/main/
 
 wget -O duokaixianzhiban.sh https://raw.githubusercontent.com/a3165458/Titan-Network/main/duokaixianzhiban.sh && chmod +x duokaixianzhiban.sh && ./duokaixianzhiban.sh
 
-sudo chmod +x duokai_vi.sh && ./duokai.sh
+sudo chmod +x duokai_vi.sh
+sudo bash duokai_vi.sh
