@@ -6,10 +6,12 @@ wget -O duokaixianzhiban.sh https://raw.githubusercontent.com/a3165458/Titan-Net
 
 Chi tiết cài:
 
-Cần mount ổ đĩa lưu trữ trước khi cài đặt 
+<!-- Cần mount ổ đĩa lưu trữ trước khi cài đặt 
 đối với wsl2: (ví dụ mount ổ D)
 mkdir -p ~/mnt_d
-sudo mount --bind /mnt/d ~/mnt_d
+sudo mount --bind /mnt/d ~/mnt_d -->
+
+nhập đường dẫn: ví dụ ổ D: /root/mnt/d/
 
 git clone https://github.com/quochoandkh/Titan_network.git
 cd Titan_network
