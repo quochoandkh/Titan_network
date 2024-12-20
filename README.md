@@ -15,4 +15,4 @@ git clone https://github.com/quochoandkh/Titan_network.git
 cd Titan_network
 sudo chmod +x duokai_vi.sh
 sudo bash duokai_vi.sh
-(chọn đường dẫn ) là ~/mnt_d/Titan_node
+(chọn đường dẫn ) là /home/username/mnt_d/Titan_node
