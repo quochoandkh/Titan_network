@@ -58,7 +58,7 @@ do
     # Tạo thư mục lưu trữ
     mkdir -p "$storage_path"
 
-    # Khởi chạy container và thiết lập chính sách khởi động lại luôn
+    # Khởi chạy container và thiết lập chính sách khởi động lại luôn, -v "$storage_path:/root/.titanedge/storage" giúp mount biến $storage_path vào /root/.titanedge/storage
     container_id=$(docker run -d --restart always -v "$storage_path:/root/.titanedge/storage" --name "titan$i" --net=host  nezha123/titan-edge:1.7)
 
     echo "Node titan$i đã được khởi động với Container ID: $container_id"
