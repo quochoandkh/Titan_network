@@ -6,15 +6,21 @@ wget -O duokaixianzhiban.sh https://raw.githubusercontent.com/a3165458/Titan-Net
 
 Chi tiết cài:
 
-<!-- Cần mount ổ đĩa lưu trữ trước khi cài đặt 
-đối với wsl2: (ví dụ mount ổ D)
-mkdir -p ~/mnt_d
-sudo mount --bind /mnt/d ~/mnt_d -->
+sudo -i
+cd /
+mkdir -p /root/mnt/g
+sudo mount -t drvfs G: /root/mnt/g
+ls /root/mnt/g
+sudo nano ~/.bashrc
+thêm dòng này vào cuối file
+sudo mount -t drvfs G: /root/mnt/g
+save lại
+source ~/.bashrc
 
-nhập đường dẫn: ví dụ ổ D: /root/mnt/d/
-
+cd ~/mnt/g
 git clone https://github.com/quochoandkh/Titan_network.git
 cd Titan_network
-sudo chmod +x duokai_vi.sh
-sudo bash duokai_vi.sh
-(chọn đường dẫn tuyệt đối ) là /home/username/mnt_d/Titan_node
+sudo chmod +x titan.sh
+sudo bash titan.sh
+đến đoạn chọn đường dẫn nhập (ví dụ đang mount vào ổ G):
+/root/mnt/g/
