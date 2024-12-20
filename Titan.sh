@@ -1,129 +1,166 @@
 #!/bin/bash
 
-# 检查是否以root用户运行脚本
+# Function to display colored text
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if the script is run as root
 if [ "$(id -u)" != "0" ]; then
-    echo "此脚本需要以root用户权限运行。"
-    echo "请尝试使用 'sudo -i' 命令切换到root用户，然后再次运行此脚本。"
+    echo -e "${YELLOW}This script requires root access.${NC}"
+    echo -e "${YELLOW}Please enter root mode using 'sudo -i', then rerun this script.${NC}"
+    exec sudo -i
     exit 1
 fi
 
-function install_node() {
 
-# 读取加载身份码信息
-read -p "输入你的身份码: " id
+# Prompt the user to enter the identity code
+echo -e "${GREEN}Chạy Node Titan_edge"
+echo -e "${YELLOW}Nhập mã identity code:${NC}"
+read -p "> " id
+# Cho phép người dùng nhập số lượng container muốn tạo
+read -p "Nhập số lượng node bạn muốn tạo (một IP giới hạn tối đa 5 node): " container_count
+# Nhập dung lượng lưu trữ cho mỗi node
+read -p "Nhập dung lượng lưu trữ cho mỗi node (GB), giới hạn tối đa 2TB/node (2000gb): " storage_gb
+# Nhập đường dẫn lưu trữ (tùy chọn)
+read -p "Nhập đường dẫn lưu trữ dữ liệu cho node trên máy chủ, ví dụ /root/mnt_d/): " custom_storage_path
 
-# 让用户输入想要创建的容器数量
-read -p "请输入你想要创建的节点数量，单IP限制最多5个节点，目前建议只开1个节点，效率最高: " container_count
+# Storage and port settings
+start_port=1235
 
-# 让用户输入想要分配的空间大小
-read -p "请输入你想要分配每个节点的存储空间大小（GB），单个上限2T, 设置后，需要执行Docker restart 容器名称，使其成效: " storage_gb
+# Get the list of public IPs
+public_ips=$(curl -s ifconfig.me)
 
-# 让用户输入存储路径（可选）
-read -p "请输入节点存储数据的宿主机路径（直接回车将使用默认路径 titan_storage_$i,依次数字顺延）: " custom_storage_path
-
-apt update
-
-# 检查 Docker 是否已安装
-if ! command -v docker &> /dev/null
-then
-    echo "未检测到 Docker，正在安装..."
-    apt-get install ca-certificates curl gnupg lsb-release -y
-    
-    # 安装 Docker 最新版本
-    apt-get install docker.io -y
-else
-    echo "Docker 已安装。"
+if [ -z "$public_ips" ]; then
+    echo -e "${YELLOW}No public IP detected.${NC}"
+    exit 1
 fi
 
-# 拉取Docker镜像
-docker pull nezha123/titan-edge:1.7_amd64
+# Define a function to update sysctl configuration
+update_sysctl_config() {
+    # Define the configuration values
+    local CONFIG_VALUES="
+net.core.rmem_max=26214400
+net.core.rmem_default=26214400
+net.core.wmem_max=26214400
+net.core.wmem_default=26214400
+"
 
-# 创建用户指定数量的容器
-for i in $(seq 1 $container_count)
-do
-    # 判断用户是否输入了自定义存储路径
-    if [ -z "$custom_storage_path" ]; then
-        # 用户未输入，使用默认路径
-        storage_path="$PWD/titan_storage_$i"
+    # Path to the sysctl configuration file
+    local SYSCTL_CONF="/etc/sysctl.conf"
+
+    # Backup the original sysctl.conf file
+    echo "Backing up the original sysctl.conf to sysctl.conf.bak..."
+    sudo cp "$SYSCTL_CONF" "$SYSCTL_CONF.bak"
+
+    # Append the configuration values to sysctl.conf
+    echo "Updating sysctl.conf with new configuration values..."
+    echo "$CONFIG_VALUES" | sudo tee -a "$SYSCTL_CONF" > /dev/null
+
+    # Apply the changes
+    echo "Applying the new sysctl configuration..."
+    sudo sysctl -p
+
+    echo "Configuration updated and applied successfully."
+
+    # Check if SELinux is present and handle accordingly
+    if command -v setenforce &> /dev/null; then
+        echo "Disabling SELinux enforcement..."
+        sudo setenforce 0
     else
-        # 用户输入了自定义路径，使用用户提供的路径
-        storage_path="$custom_storage_path"
+        echo "SELinux is not installed or not applicable."
     fi
+}
 
-    # 确保存储路径存在
-    mkdir -p "$storage_path"
+# Function to install Docker based on the distribution
+install_docker() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|debian)
+                echo -e "${GREEN}Installing Docker on $ID...${NC}"
+                apt-get update
+                apt-get install -y ca-certificates curl gnupg lsb-release
+                apt-get install -y docker.io
+                ;;
+            centos|rhel|almalinux|rocky)
+                echo -e "${GREEN}Installing Docker on $ID...${NC}"
+                yum install -y yum-utils
+                yum install -y docker
+                update_sysctl_config
+                ;;
+            fedora)
+                echo -e "${GREEN}Installing Docker on Fedora...${NC}"
+                dnf install -y docker
+                update_sysctl_config
+                ;;
+            arch)
+                echo -e "${GREEN}Installing Docker on Arch Linux...${NC}"
+                pacman -S --noconfirm docker
+                ;;
+            *)
+                echo -e "${YELLOW}Unsupported Linux distribution: $ID. Please install Docker manually.${NC}"
+                exit 1
+                ;;
+        esac
+    else
+        echo -e "${YELLOW}Cannot detect Linux distribution. Please install Docker manually.${NC}"
+        exit 1
+    fi
+}
 
-    # 运行容器，并设置重启策略为always
-    container_id=$(docker run -d --restart always -v "$storage_path:/root/.titanedge/storage" --name "titan$i" --net=host nezha123/titan-edge:1.7_amd64)
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    echo -e "${GREEN}Docker not detected, installing...${NC}"
+    install_docker
+else
+    echo -e "${GREEN}Docker is already installed.${NC}"
+fi
 
-    echo "节点 titan$i 已经启动 容器ID $container_id"
+# Ensure Docker is running
+systemctl start docker
+systemctl enable docker
 
-    sleep 30
+# Pull the Docker image
+echo -e "${GREEN}Pulling the Docker image nezha123/titan-edge...${NC}"
+docker pull nezha123/titan-edge
 
-        # 修改宿主机上的config.toml文件以设置StorageGB值
-docker exec $container_id bash -c "\
-    sed -i 's/^[[:space:]]*#StorageGB = .*/StorageGB = $storage_gb/' /root/.titanedge/config.toml && \
-    echo '容器 titan'$i' 的存储空间已设置为 $storage_gb GB'"
-   
-    # 进入容器并执行绑定和其他命令
-    docker exec $container_id bash -c "\
-        titan-edge bind --hash=$id https://api-test1.container1.titannet.io/api/v2/device/binding"
+# Set up nodes for each public IP
+current_port=$start_port
+
+for ip in $public_ips; do
+    echo -e "${GREEN}Setting up node for IP $ip${NC}"
+
+    for ((i=1; i<=container_count; i++)); do
+        storage_path="${custom_storage_path}/titan_storage_${ip}_${i}"
+
+        # Ensure storage path exists
+        sudo mkdir -p "$storage_path"
+        sudo chmod -R 777 "$storage_path"
+
+        # Run the container with restart always policy
+        container_id=$(docker run -d --restart always -v "$storage_path:/root/.titanedge/storage" --name "titan_${ip}_${i}" --net=host nezha123/titan-edge)
+
+        echo -e "${GREEN}Node titan_${ip}_${i} is running with container ID $container_id${NC}"
+
+        sleep 30
+
+        # Modify the config.toml file to set StorageGB and RPC port
+        docker exec $container_id bash -c "\
+            sed -i 's/^[[:space:]]*#StorageGB = .*/StorageGB = $storage_gb/' /root/.titanedge/config.toml && \
+            sed -i 's/^[[:space:]]*#ListenAddress = \"0.0.0.0:1234\"/ListenAddress = \"0.0.0.0:$current_port\"/' /root/.titanedge/config.toml && \
+            echo 'Storage for node titan_${ip}_${i} set to $storage_gb GB, Port set to $current_port'"
+
+        # Restart the container for the settings to take effect
+        docker restart $container_id
+
+        # Bind the node
+        docker exec $container_id bash -c "\
+            titan-edge bind --hash=$id https://api-test1.container1.titannet.io/api/v2/device/binding"
+        echo -e "${GREEN}Node titan_${ip}_${i} has been successfully initialized.${NC}"
+
+        current_port=$((current_port + 1))
+    done
 done
 
-echo "==============================所有节点均已设置并启动===================================."
-
-}
-
-# 卸载节点功能
-function uninstall_node() {
-    echo "你确定要卸载Titan 节点程序吗？这将会删除所有相关的数据。[Y/N]"
-    read -r -p "请确认: " response
-
-    case "$response" in
-        [yY][eE][sS]|[yY]) 
-            echo "开始卸载节点程序..."
-            for i in {1..5}; do
-                sudo docker stop "titan$i" && sudo docker rm "titan$i"
-            done
-            for i in {1..5}; do 
-                rmName="storage_titan_$i"
-                rm -rf "$rmName"
-            done
-            echo "节点程序卸载完成。"
-            ;;
-        *)
-            echo "取消卸载操作。"
-            ;;
-    esac
-}
-
-
-
-# 主菜单
-function main_menu() {
-    while true; do
-        clear
-        echo "脚本以及教程由推特用户大赌哥 @y95277777 编写，免费开源，请勿相信收费"
-        echo "================================================================"
-        echo "节点社区 Telegram 群组:https://t.me/niuwuriji"
-        echo "节点社区 Telegram 频道:https://t.me/niuwuriji"
-        echo "节点社区 Discord 社群:https://discord.gg/GbMV5EcNWF"
-        echo "退出脚本，请按键盘ctrl c退出即可"
-        echo "请选择要执行的操作:"
-        echo "1. 安装节点"
-        echo "2. 卸载节点"
-        read -p "请输入选项（1-2）: " OPTION
-
-        case $OPTION in
-        1) install_node ;;
-        2) uninstall_node ;;
-        *) echo "无效选项。" ;;
-        esac
-        echo "按任意键返回主菜单..."
-        read -n 1
-    done
-    
-}
-
-# 显示主菜单
-main_menu
+echo -e "${GREEN}============================== All nodes have been set up and are running ===============================${NC}"
